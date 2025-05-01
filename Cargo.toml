@@ -1,0 +1,9 @@
+[package]
+name = "gpa"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dotenv = "0.15.0"
+headless_chrome = "1.0.17"
+tokio = { version = "1.44.2", features = ["full"] }
