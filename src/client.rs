@@ -17,6 +17,11 @@ pub fn fetch_data() -> Result<(), Box<dyn Error>> {
     println!("Success!");
 
     Ok(()) // Return a successful result
+
+    // TODO:
+    // - Add multithreading to run multiple tabs at once
+    // - Fix problem where browser cannot reach other course page because have to navgiate back out again
+    // - Add functionalities and somehow deploy for end users
 }
 
 fn initialize() -> (Browser, std::sync::Arc<headless_chrome::Tab>) {
