@@ -1,5 +1,5 @@
-use std::error::Error;
 use dotenv::dotenv;
+use std::error::Error;
 
 use headless_chrome::Browser;
 use headless_chrome::protocol::cdp::Page;

@@ -1,7 +1,7 @@
 pub mod data {
     use crate::client;
-    use serde::{Serialize, Deserialize};
     use chrono::NaiveDate;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Serialize, Deserialize, Clone)]
     pub struct Data {
@@ -14,7 +14,7 @@ pub mod data {
                 courses: Vec::new(),
             }
         }
-        
+
         pub fn insert_course(&mut self, course: Course) {
             self.courses.push(course);
         }
@@ -74,8 +74,16 @@ pub mod data {
     }
 
     impl Assignment {
-        pub fn new(date: NaiveDate, assign: String, category: String, score: f32, score_possible: f32, 
-        score_type: String, points: f32, points_possible: f32) -> Self {
+        pub fn new(
+            date: NaiveDate,
+            assign: String,
+            category: String,
+            score: f32,
+            score_possible: f32,
+            score_type: String,
+            points: f32,
+            points_possible: f32,
+        ) -> Self {
             Assignment {
                 date,
                 assign,
@@ -90,7 +98,6 @@ pub mod data {
     }
 
     pub fn process(data: Data) -> Data {
-
         data
     }
 }
