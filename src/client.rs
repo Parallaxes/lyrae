@@ -1,19 +1,42 @@
 use crate::processor::data::{Assignment, Category, Course, Data};
 use dotenv::dotenv;
 use headless_chrome::Browser;
-use serde::{Deserialize, Serialize};
-use std::error::Error;
+use std::thread;
+use std::{
+    error::Error,
+    sync::{Arc, Mutex, mpsc},
+};
 
 pub fn fetch_data() -> Result<(), Box<dyn Error>> {
-    let (browser, tab) = initialize();
-    let (browser, tab) = login(browser, tab)?;
-    let data = Data::new();
+    let data = Arc::new(Mutex::new(Data::new()));
+    let (tx, rx): (mpsc::Sender<Data>, mpsc::Receiver<Data>) = mpsc::channel();
+    let mut handles = vec![];
 
     for num in (1..=13).step_by(3) {
-        fetch_grades(browser.clone(), tab.clone(), num, data.clone())?;
+        let tx = tx.clone();
+        let data = Arc::clone(&data);
+
+        let handle = thread::spawn(move || {
+            let (browser, tab) = initialize();
+            match login(browser, tab) {
+                Ok((browser, tab)) => {
+                    if let Err(e) = fetch_grades(browser, tab, num, data) {
+                        eprintln!("Error fetching grades for course {}: {}", num, e);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Login failed for course {}: {}", num, e);
+                }
+            }
+        });
+
+        handles.push(handle);
     }
 
-    fetch_grades(browser.clone(), tab.clone(), 1, data.clone())?;
+    for handle in handles {
+        handle.join().expect("Thread panicked");
+    }
+    // fetch_grades(browser.clone(), tab.clone(), 1, data.clone())?;
     println!("Success!");
 
     Ok(()) // Return a successful result
@@ -63,7 +86,7 @@ pub fn fetch_grades(
     browser: Browser,
     tab: std::sync::Arc<headless_chrome::Tab>,
     num: i32,
-    data: Data,
+    data: Arc<Mutex<Data>>,
 ) -> Result<(), Box<dyn Error>> {
     println!("Entering calc");
     let element = tab.wait_for_element(&format!(
@@ -72,15 +95,15 @@ pub fn fetch_grades(
     ))?;
     element.click()?;
     let course = element;
-    process_course(browser, tab.clone(), data, course.get_inner_text()?)?;
+    process_course(browser, tab.clone(), data.clone(), course.get_inner_text()?)?;
 
     Ok(())
 }
 
 pub fn process_course(
-    browser: Browser,
+    _browser: Browser,
     tab: std::sync::Arc<headless_chrome::Tab>,
-    mut data: Data,
+    data: Arc<Mutex<Data>>,
     course: String,
 ) -> Result<Data, Box<dyn Error>> {
     let course = Course::new(course);
@@ -138,7 +161,7 @@ pub fn process_course(
             .unwrap_or(0.0);
         let score_type = tab.wait_for_element(format!(".dx-scrollable-content > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(2) > tr:nth-child({}) > td:nth-child(7)", i).as_str())?
             .get_inner_text()?.trim().to_string();
-        let points_text = tab.wait_for_element(format!(".dx-scrollable-content > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(2) > tr:nth-child({}) > td:nth-child(8)", i).as_str())?
+        let _points_text = tab.wait_for_element(format!(".dx-scrollable-content > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(2) > tr:nth-child({}) > td:nth-child(8)", i).as_str())?
             .get_inner_text()?.trim().to_string();
         let parts: Vec<&str> = score_text.split('/').collect();
         let points = parts
@@ -164,7 +187,8 @@ pub fn process_course(
 
     println!("{:?}", assignments);
 
+    let mut data = data.lock().unwrap();
     data.insert_course(course.clone());
 
-    Ok(data)
+    Ok(data.clone())
 }
